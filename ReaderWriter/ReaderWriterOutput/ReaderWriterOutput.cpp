@@ -12,11 +12,11 @@
 int nr = 0; //num of readers
 
 //Data access semaphore
-SDL_sem* rw = NULL;
+SDL_sem* readwrite = NULL;
 SDL_sem* mutexR = NULL;
 
-int Reader(void * data);
-int Writer(void * data);
+int Readers(void * data);
+int Writers(void * data);
 
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -25,13 +25,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	std::list<SDL_Thread*> writers;
 
 	//Initialize semaphore
-	rw = SDL_CreateSemaphore(1);
+	readwrite = SDL_CreateSemaphore(1);
 	mutexR = SDL_CreateSemaphore(1);
 
 	for (int i = 0; i < 10; i++)
 	{
-		readers.push_back(SDL_CreateThread(Reader, "Readers", NULL));
-		writers.push_back(SDL_CreateThread(Writer, "Writers", &i));
+		readers.push_back(SDL_CreateThread(Readers, "Readers", NULL));
+		writers.push_back(SDL_CreateThread(Writers, "Writers", &i));
 	}
 
 	std::cin.get();
@@ -48,7 +48,7 @@ int Readers(void * data)
 		
 		if (nr == 1)
 		{
-			SDL_SemWait(rw);//lock in rw 
+			SDL_SemWait(readwrite);//lock in rw 
 		}
 		SDL_SemPost(mutexR);//releases lock
 
@@ -71,7 +71,7 @@ int Readers(void * data)
 		nr = nr - 1;
 		if (nr == 0)
 		{
-			SDL_SemPost(rw);//if last thread, release the lock
+			SDL_SemPost(readwrite);//if last thread, release the lock
 		}
 		SDL_SemPost(mutexR);//release mutexR
 
@@ -85,7 +85,7 @@ int Writers(void * data)
 	int i = *(int *)data;
 	while (true)
 	{
-		SDL_SemWait(rw);//lock rw
+		SDL_SemWait(readwrite);//lock rw
 		std::cout << "Writing to the Textfile" << std::endl;
 
 		std::ofstream myfile;
@@ -93,7 +93,7 @@ int Writers(void * data)
 		myfile << "Achievement Number: " << i << std::endl; //Output to text file
 		myfile.close();//Close text file
 
-		SDL_SemPost(rw);//releases lock
+		SDL_SemPost(readwrite);//releases lock
 
 		//Wait randomly to give writers a chance to acquire lock
 		SDL_Delay(16 + rand() % 640);
